@@ -1,5 +1,7 @@
 var mc = require('minecraft-protocol');
 const fs = require('fs');
+var events = require('events');
+var em = new events.EventEmitter();
 
 var fishingRodEntityId = 0;
 var activeHotbarSlot = 0; //offset 
@@ -10,6 +12,7 @@ var playerInventory = [];
 var lastCatchTime = -1;
 var cumCatch = 0;
 var noFishingRod = false;
+
 
 const PLAYER_HOTBARSLOT_OFFSET = 36;
 
@@ -39,6 +42,9 @@ var client = mc.createClient({
   // username: "Test1"//,
   password: passwordFile.password
 });
+
+console.log('Starting bot...');
+em.on('invLoaded', retryEquipFishingRod);
 
 function idToHumanName(ID){
   switch(ID){
@@ -86,55 +92,28 @@ function idToHumanName(ID){
 
 }
 
-
 client.on('login', function(packet){
   userEntityId = packet.entityId;
   console.log('Logged in with entity ID: ' + userEntityId);
   client.write('held_item_slot', {slotId: 0});
   activeHotbarSlot = 0;
+  setTimeout(function(){
+        console.log('Casting line again...');
+        retryEquipFishingRod();
+      } , 5 * 1000 );
 });
 
-function comparer(otherArray){
-  return function(current){
-    return otherArray.filter(function(other){
-      return other.itemId == current.itemId && other.itemCount == current.itemCount
-    }).length == 0;
-  }
-}
-
-function returnNewItem(old, newItems){
-  if (old.length === 0){ return; }
-  old = old.filter(x => { return x.present === true});
-  newItems = newItems.filter(x => { return x.present === true});
-  // console.log(old);
-  // console.log(newItems);
-  // old = old.filter(comparer(newItems));
-  // newItems = newItems.filter(comparer(old));
-  printNewItem(newItems);
-  // var result = old.concat(newItems);
-  
-}
-
-function printNewItem(newItem){
-  if (!newItem[0]) {return;}
-  // console.log('Caught a ' + newItem[0].itemId);
-}
-
 client.on('chat', function(packet){
-  // console.log(packet);
+  console.log(packet);
   // var textArray = JSON.parse(packet.message);
   // console.log('Chat - <' + textArray.with[0].text + '> ' + textArray.with[1]);
 });
 
 client.on('window_items', function(packet){
   // console.log('Updating player inventory...');
-  var tempA = playerInventory;
-  var tempB = packet.items;
-  tempB = tempB.filter(x => { return x.present === true});
   // console.log(tempB);
-  // returnNewItem(tempA, tempB);
   playerInventory = packet.items;
-  retryEquipFishingRod();
+
 });
 
 client.on('set_slot', function(packet){
@@ -152,18 +131,26 @@ client.on('set_slot', function(packet){
 
 client.on('entity_velocity', function(packet){
   if (!startCheck) { return; }
+  // console.log(packet);
   if (packet.entityId === fishingRodEntityId){
-    if (Math.abs(packet.velocityY) > 390){
+    if (Math.abs(packet.velocityY) > 1000){
       //catch fish
+      // console.log(packet);
+      // console.log('Threshold breached - Reeling line');
       client.write('use_item', {hand: 0});
       cumCatch++;
       startCheck = false;
+      setTimeout(function(){
+        // console.log('Casting line again...');
+        retryEquipFishingRod();
+      } , 1 * 1000 );
     }
   }
 });
 
 client.on('spawn_entity', function(packet){
   if (packet.type === 102){
+    // console.log('Fishing line cast.');
     fishingRodEntityId = packet.entityId;
     setTimeout(function(){ 
       startCheck = true;
@@ -187,11 +174,13 @@ function retryEquipFishingRod(){
       activeHotbarSlot = i - PLAYER_HOTBARSLOT_OFFSET;
       client.write('held_item_slot', {slotId: (i - PLAYER_HOTBARSLOT_OFFSET)});
       client.write('use_item', {hand: 0});
+      noFishingRod = false;
       return;
     }
   }
   noFishingRod = true;
   setTimeout((function() {
+    console.warn(' ---------------- ');
     console.warn('Did not find fishing rod. Idling.');
     // return process.exit(0);
 }), 2 * 1000);
