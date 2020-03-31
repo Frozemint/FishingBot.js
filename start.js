@@ -9,6 +9,7 @@ var hotItemSlot = -1;
 var playerInventory = [];
 var lastCatchTime = -1;
 var cumCatch = 0;
+var noFishingRod = false;
 
 const PLAYER_HOTBARSLOT_OFFSET = 36;
 
@@ -31,24 +32,32 @@ var passwordFile = fs.readFileSync('password.json');
 passwordFile = JSON.parse(passwordFile);
 
 var client = mc.createClient({
-  // host: "ubc.mcpro.io",   // optional
-  host: "192.168.1.76",
+  host: "ubc.mcpro.io",   // optional
+  // host: "192.168.1.76",
   port: 25565,         // optional
   username: "nami5504@gmail.com",
-  // username: "Test1",
+  // username: "Test1"//,
   password: passwordFile.password
 });
 
 function idToHumanName(ID){
   switch(ID){
+    case 225:
+      return 'Lily Pad';
     case 238:
       return 'Tripwire Hook';
+    case 525:
+      return 'Bow';
     case 545:
       return 'Stick';
     case 552:
       return 'String';
     case 546:
       return 'Bowl';
+    case 566:
+      return 'Leather Boots';
+    case 599:
+      return 'Saddle';
     case 603:
       return 'Leather';
     case 625:
@@ -65,6 +74,12 @@ function idToHumanName(ID){
       return 'Rotten Flesh';
     case 687:
       return 'Potion';
+    case 798:
+      return 'Name Tag';
+    case 780:
+      return 'Enchanted Book';
+    case 855:
+      return 'Nautilus Shell'
     default:
       return ID;
   }
@@ -125,7 +140,7 @@ client.on('window_items', function(packet){
 client.on('set_slot', function(packet){
   if (packet.windowId != 0 || playerInventory.length === 0 || cumCatch === 0) {return;} //update is not about player inv
   if (packet.item.itemId && packet.slot != PLAYER_HOTBARSLOT_OFFSET + activeHotbarSlot){
-    console.log('Caught a ' + idToHumanName(packet.item.itemId) + '. Mean time for catch (sec): ' + process.uptime() / cumCatch);
+    console.log('Caught a ' + idToHumanName(packet.item.itemId) + '. Mean time for catch (sec): ' + (process.uptime() / cumCatch).toFixed(2));
   }
   hotItemSlot = packet.slot;
   if (packet.slot === PLAYER_HOTBARSLOT_OFFSET + activeHotbarSlot){
@@ -152,11 +167,12 @@ client.on('spawn_entity', function(packet){
     fishingRodEntityId = packet.entityId;
     setTimeout(function(){ 
       startCheck = true;
-    }, 3000);
+    }, 1000);
   }
 });
 
 client.on('entity_destroy', function(packet){
+  if (noFishingRod || !startCheck) { return; }
   if (packet.entityIds.indexOf(fishingRodEntityId) != -1){
     startCheck = false;
     console.log('Fishing rod entity destroyed! Restarting in 5 seconds...');
@@ -174,8 +190,9 @@ function retryEquipFishingRod(){
       return;
     }
   }
-  console.warn('Did not find fishing rod. Disconnecting in 60 seconds.');
+  noFishingRod = true;
   setTimeout((function() {
-    return process.exit(0);
-}), 60 * 1000);
+    console.warn('Did not find fishing rod. Idling.');
+    // return process.exit(0);
+}), 2 * 1000);
 }
