@@ -1,4 +1,6 @@
 var mc = require('minecraft-protocol');
+const fs = require('fs');
+
 var fishingRodEntityId = 0;
 var activeHotbarSlot = 0; //offset 
 var startCheck = false;
@@ -32,8 +34,8 @@ var client = mc.createClient({
   // host: "ubc.mcpro.io",   // optional
   host: "192.168.1.76",
   port: 25565,         // optional
-  // username: "nami5504@gmail.com"//,
-  username: "Test1",
+  username: "nami5504@gmail.com",
+  // username: "Test1",
   password: passwordFile.password
 });
 
