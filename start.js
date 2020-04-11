@@ -1,7 +1,6 @@
-var mc = require('minecraft-protocol');
+const mc = require('minecraft-protocol');
 const fs = require('fs');
-var events = require('events');
-var em = new events.EventEmitter();
+const events = require('events');
 
 var fishingRodEntityId = 0;
 var activeHotbarSlot = 0; //offset 
@@ -12,6 +11,8 @@ var playerInventory = [];
 var lastCatchTime = -1;
 var cumCatch = 0;
 var noFishingRod = false;
+var elapsedTime = 0;
+var checkFishTimer; 
 
 
 const PLAYER_HOTBARSLOT_OFFSET = 36;
@@ -31,6 +32,11 @@ console.warn = function(data)
     this.warnCopy(currentDate, data);
 };
 
+process.on('SIGINT', function() {
+    console.log("Caught ^C:");
+    process.exit();
+});
+
 var passwordFile = fs.readFileSync('password.json');
 passwordFile = JSON.parse(passwordFile);
 
@@ -44,7 +50,6 @@ var client = mc.createClient({
 });
 
 console.log('Starting bot...');
-em.on('invLoaded', retryEquipFishingRod);
 
 function idToHumanName(ID){
   switch(ID){
@@ -104,9 +109,18 @@ client.on('login', function(packet){
 });
 
 client.on('chat', function(packet){
-  console.log(packet);
+  // console.log(packet);
   // var textArray = JSON.parse(packet.message);
   // console.log('Chat - <' + textArray.with[0].text + '> ' + textArray.with[1]);
+});
+
+client.on('disconnect', function(packet){
+  console.log(packet);
+});
+
+client.on('kick_disconnect', function(packet){
+  console.log('Kicked from server. Reason: ');
+  console.log(packet);
 });
 
 client.on('window_items', function(packet){
@@ -140,6 +154,7 @@ client.on('entity_velocity', function(packet){
       client.write('use_item', {hand: 0});
       cumCatch++;
       startCheck = false;
+      clearInterval(checkFishTimer);
       setTimeout(function(){
         // console.log('Casting line again...');
         retryEquipFishingRod();
@@ -175,6 +190,17 @@ function retryEquipFishingRod(){
       client.write('held_item_slot', {slotId: (i - PLAYER_HOTBARSLOT_OFFSET)});
       client.write('use_item', {hand: 0});
       noFishingRod = false;
+      elapsedTime = 0;
+      // checkFishTimer = setInterval(function() {
+      //   // console.log(elapsedTime);
+      //   elapsedTime = elapsedTime + 2;
+      //   if (elapsedTime > 60){
+      //     console.log('No catch for 60s, possibly stuck. Recasting line.');
+      //     startCheck = false;
+      //     clearInterval(checkFishTimer);
+      //     retryEquipFishingRod();
+      //   }
+      // }, 2 * 1000);
       return;
     }
   }
