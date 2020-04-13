@@ -105,7 +105,7 @@ client.on('login', function(packet){
   setTimeout(function(){
         console.log('Casting line again...');
         retryEquipFishingRod();
-      } , 5 * 1000 );
+      } , 10 * 1000 );
 });
 
 client.on('chat', function(packet){
@@ -150,7 +150,7 @@ client.on('entity_velocity', function(packet){
     if (Math.abs(packet.velocityY) > 1000){
       //catch fish
       // console.log(packet);
-      // console.log('Threshold breached - Reeling line');
+      console.log('Threshold breached - Reeling line');
       client.write('use_item', {hand: 0});
       cumCatch++;
       startCheck = false;
@@ -206,8 +206,9 @@ function retryEquipFishingRod(){
   }
   noFishingRod = true;
   setTimeout((function() {
-    console.warn(' ---------------- ');
-    console.warn('Did not find fishing rod. Idling.');
+    console.log(' ---------------- ');
+    console.log('Did not find fishing rod. Idling.');
     // return process.exit(0);
 }), 2 * 1000);
+  setTimeout((function(){ process.exit(0);}), 2 * 60 * 1000);
 }
